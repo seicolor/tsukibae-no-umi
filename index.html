@@ -440,6 +440,7 @@ let audio = null;
 function initAudio() {
   if (audio) { audio.ctx.resume(); return audio; }
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume(); // iOS Safari は生成直後も suspended のことがあるため明示的に起こす
   const master = ctx.createGain();
   master.gain.value = 0.6;
   master.connect(ctx.destination);
