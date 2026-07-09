@@ -441,6 +441,14 @@ function initAudio() {
   if (audio) { audio.ctx.resume(); return audio; }
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   ctx.resume(); // iOS Safari は生成直後も suspended のことがあるため明示的に起こす
+  try {
+    // Chrome for iOS 対策: 無音の<audio>要素を同じジェスチャー内で再生し、
+    // WebKit のオーディオセッションを「再生用」へ強制的に切り替える
+    const unlock = new Audio(
+      'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA=='
+    );
+    unlock.play().catch(() => {});
+  } catch (e) {}
   const master = ctx.createGain();
   master.gain.value = 0.6;
   master.connect(ctx.destination);
