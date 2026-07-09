@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月映の海 — Tsukibae no Umi</title>
+<style>
+  :root {
+    --ink: #e8e2d5;
+    --vermilion: #e34234;
+    --gold: #d9b45b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #070a14; }
+  body { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; }
+  #stage { position: fixed; inset: 0; }
+
+  /* ── 縦書きタイトル ── */
+  .title {
+    position: fixed; top: 4vh; right: 5vw; z-index: 10;
+    writing-mode: vertical-rl; letter-spacing: 0.45em;
+    color: var(--ink); pointer-events: none;
+    animation: fadein 4s ease 6s both;
+  }
+  .title h1 { font-size: clamp(26px, 4vw, 44px); font-weight: 500; }
+  .title .sub {
+    font-size: 11px; letter-spacing: 0.5em; margin-right: 1.2em;
+    color: color-mix(in srgb, var(--ink) 55%, transparent);
+  }
+  .title::before {
+    content: ""; position: absolute; top: -1.5em; right: 50%;
+    width: 1px; height: 1em; background: var(--vermilion);
+  }
+
+  /* ── 落款(印) ── */
+  .seal {
+    position: fixed; right: calc(5vw - 4px); bottom: 12vh; z-index: 10;
+    width: 34px; height: 34px; border: 1.5px solid var(--vermilion);
+    color: var(--vermilion); writing-mode: vertical-rl;
+    display: grid; place-items: center; font-size: 13px; letter-spacing: 0.1em;
+    border-radius: 3px; opacity: 0.85; pointer-events: none;
+    animation: fadein 4s ease 8s both;
+  }
+
+  /* ── 操作説明(物語の後に現れる) ── */
+  .howto {
+    position: fixed; left: 4vw; bottom: 5vh; z-index: 10;
+    color: var(--ink); font-size: 12.5px; line-height: 2.1;
+    letter-spacing: 0.18em; pointer-events: none;
+    opacity: 0; transition: opacity 2.5s ease;
+  }
+  .howto.visible { opacity: 1; }
+
+  /* ── 詞書(ことばがき) — 世界からの語りかけ ── */
+  .kotoba {
+    position: fixed; inset: 0; z-index: 20;
+    display: grid; place-items: center;
+    writing-mode: vertical-rl;
+    color: var(--ink);
+    font-size: clamp(17px, 2.6vw, 27px);
+    letter-spacing: 0.34em; line-height: 2.2;
+    pointer-events: none;
+    opacity: 0; transition: opacity 1.2s ease;
+  }
+  .kotoba.show { opacity: 1; }
+  .kotoba span {
+    opacity: 0;
+    animation: charIn 1.6s cubic-bezier(0.2, 0.6, 0.3, 1) both;
+    /* 金の残光 + 墨の縁取り(月など明るい背景でも読めるように) */
+    text-shadow: 0 0 18px rgba(217, 180, 91, 0.35), 0 0 2px rgba(232, 226, 213, 0.4),
+                 0 1px 8px rgba(7, 10, 20, 0.95), 0 0 3px rgba(7, 10, 20, 0.85);
+  }
+  .kotoba span.gold { color: var(--gold); }
+  @keyframes charIn {
+    from { opacity: 0; transform: translateX(-8px); filter: blur(6px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+
+  /* ── くぐりの光(鳥居を抜ける瞬間) ── */
+  #bless {
+    position: fixed; inset: 0; z-index: 15; pointer-events: none;
+    background: radial-gradient(circle at 50% 42%,
+      rgba(255, 242, 205, 0.9), rgba(255, 220, 150, 0.28) 42%, transparent 75%);
+    opacity: 0; transition: opacity 1.4s ease;
+  }
+  .howto .key {
+    display: inline-block; min-width: 4.5em; text-align: center;
+    border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+    border-radius: 2px; padding: 0 0.5em; margin-right: 1em;
+    font-size: 11px; color: var(--gold); letter-spacing: 0.15em;
+  }
+  .howto .head {
+    font-size: 11px; letter-spacing: 0.6em;
+    color: color-mix(in srgb, var(--ink) 50%, transparent);
+    margin-bottom: 0.6em;
+  }
+
+  .mode-note {
+    position: fixed; left: 50%; top: 6vh; transform: translateX(-50%);
+    z-index: 10; color: var(--gold); font-size: 12px; letter-spacing: 0.5em;
+    opacity: 0; transition: opacity 0.6s ease; pointer-events: none;
+  }
+  .mode-note.show { opacity: 0.9; }
+
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  @media (max-width: 640px) {
+    .howto { font-size: 11px; }
+    .title h1 { letter-spacing: 0.3em; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="title">
+  <h1>月映の海</h1>
+  <div class="sub">TSUKIBAE NO UMI — 面と線の間</div>
+</div>
+<div class="seal">映</div>
+<div class="mode-note" id="modeNote"></div>
+<div class="kotoba" id="kotoba"></div>
+<div id="bless"></div>
+
+<div class="howto">
+  <div class="head">— 遊び方 —</div>
+  <div><span class="key">クリック</span>海に波紋を落とす</div>
+  <div><span class="key">ドラッグ</span>視点をめぐらす</div>
+  <div><span class="key">W</span>線描 / 面描 を切り替える</div>
+  <div><span class="key">SPACE</span>時をとめる</div>
+  <div><span class="key">M</span>音を灯す / 消す</div>
+  <div><span class="key">鳥居</span>くぐって、結びの刻へ</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ───────────────────────── 基本セットアップ ───────────────────────── */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const FOG_COLOR = new THREE.Color(0x0a0e1e);
+scene.background = FOG_COLOR;
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 400);
+camera.position.set(0, 9, 34);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 3, 0);
+controls.enabled = false; // オープニング飛行が終わるまで固定
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 12;
+controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minPolarAngle = Math.PI * 0.18;
+controls.enablePan = false;
+
+/* ───────────────────────── 海(GPU 波 + フラットシェーディング) ─────────────────────────
+   頂点シェーダーで波を変位させ、フラグメントで dFdx/dFdy からフラット法線を作る。
+   同じ頂点シェーダーを共有するワイヤーフレームのパスを薄く重ねる。 */
+const MAX_RIPPLES = 10;
+const rippleData = Array.from({ length: MAX_RIPPLES }, () => new THREE.Vector3(0, 0, -1000));
+let rippleCursor = 0;
+
+const oceanUniforms = {
+  uTime:      { value: 0 },
+  uRipples:   { value: rippleData },
+  uMoonDir:   { value: new THREE.Vector3(-0.35, 0.55, -0.75).normalize() },
+  uDeep:      { value: new THREE.Color(0x16224a) },
+  uCrest:     { value: new THREE.Color(0x4a6ca6) },
+  uMoonTint:  { value: new THREE.Color(0xd9b45b) },
+  uFogColor:  { value: FOG_COLOR },
+  uFogNear:   { value: 30 },
+  uFogFar:    { value: 130 },
+  uWireOnly:  { value: 0 },
+  uBless:     { value: 0 }, // 鳥居をくぐった後、世界がわずかに明るむ
+};
+let blessTarget = 0;
+
+const waveGLSL = /* glsl */`
+  uniform float uTime;
+  uniform vec3 uRipples[${MAX_RIPPLES}];
+
+  float waveHeight(vec2 p) {
+    float t = uTime;
+    float h = 0.0;
+    h += 0.45 * sin(p.x * 0.22 + t * 0.85);
+    h += 0.30 * sin(p.x * 0.42 + p.y * 0.35 + t * 1.25);
+    h += 0.22 * sin(p.y * 0.55 - t * 0.65);
+    h += 0.10 * sin((p.x - p.y) * 1.05 + t * 1.9);
+    // クリックの波紋
+    for (int i = 0; i < ${MAX_RIPPLES}; i++) {
+      float age = t - uRipples[i].z;
+      if (age > 0.0 && age < 7.0) {
+        float d = distance(p, uRipples[i].xy);
+        float r = age * 3.2;
+        float band = exp(-pow(d - r, 2.0) * 0.55);
+        h += 0.9 * exp(-age * 0.7) * band * sin(d * 3.5 - age * 9.0);
+      }
+    }
+    return h;
+  }
+`;
+
+const oceanVert = /* glsl */`
+  ${waveGLSL}
+  varying vec3 vWorldPos;
+  varying float vHeight;
+  varying float vFogDepth;
+  void main() {
+    vec3 pos = position;
+    pos.z = waveHeight(pos.xy);           // PlaneGeometry は XY 平面、回転前の Z が高さ
+    vHeight = pos.z;
+    vec4 world = modelMatrix * vec4(pos, 1.0);
+    vWorldPos = world.xyz;
+    vec4 mv = viewMatrix * world;
+    vFogDepth = -mv.z;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const oceanFrag = /* glsl */`
+  uniform vec3 uMoonDir, uDeep, uCrest, uMoonTint, uFogColor;
+  uniform float uFogNear, uFogFar, uWireOnly, uBless;
+  varying vec3 vWorldPos;
+  varying float vHeight;
+  varying float vFogDepth;
+  void main() {
+    if (uWireOnly > 0.5) discard;
+    // 面ごとのフラット法線
+    vec3 n = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
+    float diff = max(dot(n, uMoonDir), 0.0);
+    float crest = smoothstep(-0.5, 1.2, vHeight);
+    vec3 col = mix(uDeep, uCrest, crest);
+    col *= 0.75 + 0.55 * diff;                        // 月明かりの陰影
+    col += uMoonTint * pow(diff, 2.0) * 0.35;         // 月のハイライト
+    col += uMoonTint * 0.10 * smoothstep(0.5, 1.4, vHeight); // 波頭の金
+    // 月の道 — 月へ向かって伸びる反射帯
+    vec2 dm = normalize(uMoonDir.xz);
+    vec2 pxz = vWorldPos.xz;
+    float side = abs(pxz.x * dm.y - pxz.y * dm.x);
+    float along = dot(pxz, dm);
+    float glade = smoothstep(7.0, 0.0, side) * smoothstep(-14.0, 30.0, along);
+    col += uMoonTint * glade * (0.10 + pow(diff, 2.0) * 1.1);
+    col = col * (1.0 + uBless * 0.18) + uMoonTint * glade * uBless * 0.55;
+    float fog = smoothstep(uFogNear, uFogFar, vFogDepth);
+    gl_FragColor = vec4(mix(col, uFogColor, fog), 1.0);
+  }
+`;
+
+const wireFrag = /* glsl */`
+  uniform vec3 uMoonTint, uFogColor;
+  uniform float uFogNear, uFogFar, uWireOnly;
+  varying float vHeight;
+  varying float vFogDepth;
+  void main() {
+    float fog = smoothstep(uFogNear, uFogFar, vFogDepth);
+    float glow = 0.30 + 0.55 * smoothstep(0.2, 1.3, vHeight) + uWireOnly * 0.35;
+    vec3 col = mix(uMoonTint * glow, uFogColor, fog);
+    gl_FragColor = vec4(col, (1.0 - fog) * (0.45 + uWireOnly * 0.5));
+  }
+`;
+
+const oceanGeo = new THREE.PlaneGeometry(160, 160, 110, 110);
+
+const oceanMat = new THREE.ShaderMaterial({
+  uniforms: oceanUniforms,
+  vertexShader: oceanVert,
+  fragmentShader: oceanFrag,
+  polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+});
+const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+ocean.rotation.x = -Math.PI / 2;
+scene.add(ocean);
+
+const oceanWireMat = new THREE.ShaderMaterial({
+  uniforms: oceanUniforms,
+  vertexShader: oceanVert,
+  fragmentShader: wireFrag,
+  wireframe: true, transparent: true, depthWrite: false,
+});
+const oceanWire = new THREE.Mesh(oceanGeo, oceanWireMat);
+oceanWire.rotation.x = -Math.PI / 2;
+scene.add(oceanWire);
+
+/* ───────────────────────── 鳥居(面 + 稜線) ───────────────────────── */
+const torii = new THREE.Group();
+{
+  const fill = new THREE.MeshBasicMaterial({
+    color: 0xe34234, transparent: true, opacity: 0.16, depthWrite: false,
+  });
+  const edge = new THREE.LineBasicMaterial({ color: 0xff5a40, transparent: true, opacity: 0.95 });
+
+  const part = (w, h, d, x, y, z, rz = 0) => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    const m = new THREE.Mesh(g, fill);
+    m.position.set(x, y, z); m.rotation.z = rz;
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(g), edge);
+    l.position.copy(m.position); l.rotation.copy(m.rotation);
+    torii.add(m, l);
+  };
+
+  const H = 12, W = 9;
+  part(0.9, H, 0.9, -W / 2, H / 2 - 1.5, 0, 0.035);   // 左柱(わずかに内転び)
+  part(0.9, H, 0.9,  W / 2, H / 2 - 1.5, 0, -0.035);  // 右柱
+  part(W * 1.15, 0.75, 1.0, 0, H - 2.6, 0);           // 貫
+  part(W * 1.45, 0.95, 1.25, 0, H - 0.6, 0);          // 島木
+  part(W * 1.62, 0.7, 1.35, 0, H + 0.25, 0);          // 笠木
+  part(0.65, 1.5, 0.65, 0, H - 1.65, 0);              // 額束
+  torii.position.set(0, 0.4, -14);
+}
+scene.add(torii);
+
+/* ───────────────────────── 遠山(ワイヤーの稜線) ───────────────────────── */
+{
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x2a3a66, wireframe: true, transparent: true, opacity: 0.35,
+  });
+  const mounts = [
+    [-55, 26, 18, -75], [20, 34, 24, -95], [70, 22, 15, -70], [-15, 18, 12, -85],
+  ];
+  for (const [x, r, h, z] of mounts) {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 9, 4), mat);
+    cone.position.set(x, h / 2 - 1.5, z);
+    scene.add(cone);
+  }
+}
+
+/* ───────────────────────── 月と星 ───────────────────────── */
+let moonMesh, moonHalo, starMat, starPosAttr;
+let wishStarCount = 0;
+const STAR_N = 500, WISH_SLOTS = 64;
+{
+  const moon = moonMesh = new THREE.Mesh(
+    new THREE.CircleGeometry(9, 48),
+    new THREE.MeshBasicMaterial({ color: 0xe9d9a0, fog: false })
+  );
+  moon.position.set(-42, 52, -110);
+  moon.lookAt(camera.position);
+  scene.add(moon);
+
+  // 月暈
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = glowCanvas.height = 128;
+  const g = glowCanvas.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 8, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(233,217,160,0.5)');
+  grad.addColorStop(1, 'rgba(233,217,160,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  const halo = moonHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(glowCanvas), transparent: true, depthWrite: false,
+  }));
+  halo.scale.setScalar(55);
+  halo.position.copy(moon.position);
+  scene.add(halo);
+
+  // 星(後半は「願いの星」用の空き枠 — 願いが空に届くたび、ひとつずつ灯る)
+  const starGeo = new THREE.BufferGeometry();
+  const pts = new Float32Array((STAR_N + WISH_SLOTS) * 3);
+  for (let i = 0; i < STAR_N; i++) {
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.random() * Math.PI * 0.42;
+    const r = 180;
+    pts[i * 3]     = r * Math.sin(ph) * Math.cos(th);
+    pts[i * 3 + 1] = r * Math.cos(ph) * 0.7 + 8;
+    pts[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  for (let i = STAR_N; i < STAR_N + WISH_SLOTS; i++) {
+    pts[i * 3 + 1] = -500; // 地の底に隠しておく
+  }
+  starPosAttr = new THREE.BufferAttribute(pts, 3);
+  starGeo.setAttribute('position', starPosAttr);
+  starMat = new THREE.PointsMaterial({
+    color: 0xbfc8e8, size: 0.5, transparent: true, opacity: 0.8, fog: false,
+  });
+  scene.add(new THREE.Points(starGeo, starMat));
+}
+
+function igniteStar(x) {
+  const i = STAR_N + (wishStarCount % WISH_SLOTS);
+  wishStarCount++;
+  starPosAttr.setXYZ(i,
+    THREE.MathUtils.clamp(x * 3, -120, 120) + (Math.random() - 0.5) * 20,
+    55 + Math.random() * 55,
+    -130 - Math.random() * 30);
+  starPosAttr.needsUpdate = true;
+}
+
+/* ───────────────────────── 桜吹雪 ───────────────────────── */
+let petals;
+let petalGust = -1; // この時刻まで花びらが強く舞う
+{
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.translate(32, 32);
+  ctx.fillStyle = 'rgba(244,196,204,0.95)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8, 16, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+
+  const N = 260;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N * 3);
+  const seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    pos[i * 3]     = (Math.random() - 0.5) * 90;
+    pos[i * 3 + 1] = Math.random() * 30 + 2;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 70;
+    seed[i] = Math.random() * 100;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  petals = new THREE.Points(geo, new THREE.PointsMaterial({
+    map: tex, size: 0.8, transparent: true, opacity: 0.85,
+    depthWrite: false, color: 0xf2b8c6,
+  }));
+  petals.userData.seed = seed;
+  scene.add(petals);
+}
+
+/* ───────────────────────── 音 — Web Audio によるリアルタイム合成 ─────────────────────────
+   音源ファイルなし。最初に海へ触れた瞬間、遠鳴りの海と琴の一音が灯る。 */
+let audio = null;
+function initAudio() {
+  if (audio) { audio.ctx.resume(); return audio; }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const master = ctx.createGain();
+  master.gain.value = 0.6;
+  master.connect(ctx.destination);
+
+  // 残響(ノイズから生成したインパルス応答)
+  const rvLen = ctx.sampleRate * 2.8;
+  const impulse = ctx.createBuffer(2, rvLen, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = impulse.getChannelData(ch);
+    for (let i = 0; i < rvLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rvLen, 2.6);
+  }
+  const convolver = ctx.createConvolver();
+  convolver.buffer = impulse;
+  const revGain = ctx.createGain();
+  revGain.gain.value = 0.4;
+  convolver.connect(revGain);
+  revGain.connect(master);
+
+  // 遠鳴りの海(ブラウンノイズ + ローパス + ゆっくりのうねり)
+  const nsLen = ctx.sampleRate * 4;
+  const noiseBuf = ctx.createBuffer(1, nsLen, ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < nsLen; i++) {
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+    nd[i] = last * 3.5;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+  noise.loop = true;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 420;
+  const seaGain = ctx.createGain();
+  seaGain.gain.value = 0;
+  seaGain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 4); // 静かに満ちてくる
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.09;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.022;
+  lfo.connect(lfoGain);
+  lfoGain.connect(seaGain.gain);
+  noise.connect(lp).connect(seaGain).connect(master);
+  noise.start();
+  lfo.start();
+
+  audio = { ctx, master, convolver, muted: false };
+  return audio;
+}
+
+// 平調子(ひらぢょうし)の音階 — どの順で鳴っても和になる
+const HIRAJOSHI = [220.0, 233.08, 293.66, 329.63, 349.23, 440.0, 466.16, 587.33];
+function pluck(freqArg) {
+  if (!audio || audio.muted) return;
+  const { ctx, master, convolver } = audio;
+  const t0 = ctx.currentTime;
+  const freq = freqArg || HIRAJOSHI[Math.floor(Math.random() * HIRAJOSHI.length)];
+
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.2, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.2);
+  g.connect(master);
+  g.connect(convolver);
+
+  const o1 = ctx.createOscillator();
+  o1.frequency.value = freq;
+  o1.connect(g);
+  const g2 = ctx.createGain();
+  g2.gain.value = 0.35;
+  g2.connect(g);
+  const o2 = ctx.createOscillator();
+  o2.frequency.value = freq * 2.003; // わずかな不協和が弦らしさになる
+  o2.connect(g2);
+  const g3 = ctx.createGain();
+  g3.gain.setValueAtTime(0.12, t0);
+  g3.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+  g3.connect(g);
+  const o3 = ctx.createOscillator();
+  o3.type = 'triangle';
+  o3.frequency.value = freq * 3.98; // 爪弾きのきらめき
+  o3.connect(g3);
+
+  for (const o of [o1, o2, o3]) { o.start(t0); o.stop(t0 + 3.4); }
+}
+
+// 鈴(りん) — 願いが星に届いた合図
+function bell() {
+  if (!audio || audio.muted) return;
+  const { ctx, master, convolver } = audio;
+  const t0 = ctx.currentTime;
+  const f = 1318.5 * (0.98 + Math.random() * 0.04);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.045, t0 + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.9);
+  g.connect(master);
+  g.connect(convolver);
+  const o1 = ctx.createOscillator();
+  o1.frequency.value = f;
+  o1.connect(g);
+  const g2 = ctx.createGain();
+  g2.gain.value = 0.3;
+  g2.connect(g);
+  const o2 = ctx.createOscillator();
+  o2.frequency.value = f * 2.76; // 鐘特有の非整数倍音
+  o2.connect(g2);
+  for (const o of [o1, o2]) { o.start(t0); o.stop(t0 + 2); }
+}
+
+// くぐりの和音 — 低い持続音が満ちて、琴のアルペジオが立ちのぼる
+function blessChord() {
+  if (!audio || audio.muted) return;
+  const { ctx, master } = audio;
+  const t0 = ctx.currentTime;
+  const drone = ctx.createOscillator();
+  drone.frequency.value = 110;
+  const dg = ctx.createGain();
+  dg.gain.setValueAtTime(0, t0);
+  dg.gain.linearRampToValueAtTime(0.055, t0 + 2.2);
+  dg.gain.linearRampToValueAtTime(0, t0 + 8);
+  drone.connect(dg).connect(master);
+  drone.start(t0);
+  drone.stop(t0 + 8.2);
+  [220, 293.66, 329.63, 440, 587.33].forEach((f, i) => {
+    setTimeout(() => pluck(f), i * 380);
+  });
+}
+
+/* ───────────────────────── 灯籠流し(物語の結びに) ───────────────────────── */
+const lanterns = new THREE.Group();
+lanterns.visible = false;
+scene.add(lanterns);
+function startLanterns() { lanterns.visible = true; }
+
+// 海シェーダーの基本波と同じ式(波紋は除く)。灯籠を波に乗せるために使う
+function waveHeightJS(x, z, t) {
+  const py = -z; // 海メッシュは XY 平面を X 軸 -90° 回転 → plane.y = -world.z
+  return 0.45 * Math.sin(x * 0.22 + t * 0.85)
+       + 0.30 * Math.sin(x * 0.42 + py * 0.35 + t * 1.25)
+       + 0.22 * Math.sin(py * 0.55 - t * 0.65)
+       + 0.10 * Math.sin((x - py) * 1.05 + t * 1.9);
+}
+
+{
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,190,110,0.85)');
+  grad.addColorStop(0.35, 'rgba(255,150,70,0.35)');
+  grad.addColorStop(1, 'rgba(255,150,70,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  const glowTex = new THREE.CanvasTexture(c);
+
+  const baseGeo = new THREE.BoxGeometry(1.0, 0.16, 1.0);
+  const bodyGeo = new THREE.BoxGeometry(0.62, 0.72, 0.62);
+  const baseMat = new THREE.MeshBasicMaterial({ color: 0x241a12 });
+  const frameMat = new THREE.LineBasicMaterial({ color: 0x140e08, transparent: true, opacity: 0.9 });
+
+  for (let i = 0; i < 7; i++) {
+    const L = new THREE.Group();
+    const bodyMat = new THREE.MeshBasicMaterial({
+      color: 0xffc27a, transparent: true, opacity: 0, depthWrite: false,
+    });
+    const glowMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0, depthWrite: false });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.08;
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.52;
+    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo), frameMat);
+    frame.position.copy(body.position);
+    const glow = new THREE.Sprite(glowMat);
+    glow.scale.setScalar(4.5);
+    glow.position.y = 0.7;
+    L.add(base, body, frame, glow);
+    L.userData = {
+      x: (Math.random() - 0.5) * 46,
+      z: -60 - Math.random() * 25,
+      speed: 0.5 + Math.random() * 0.4,
+      drift: 0.3 + Math.random() * 0.5,
+      phase: Math.random() * Math.PI * 2,
+      bodyMat, glowMat, glow,
+    };
+    lanterns.add(L);
+  }
+}
+
+/* ───────────────────────── 願い文字 ─────────────────────────
+   波紋から光る文字が立ちのぼり、空に届いて本物の星になる。 */
+const WISH_CHARS = ['願', '光', '海', '月', '夢', '花', '風', '祈', '灯', '縁', '静', '波'];
+const wishTexCache = new Map();
+function wishTexture(ch) {
+  if (wishTexCache.has(ch)) return wishTexCache.get(ch);
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.font = '86px "Hiragino Mincho ProN", "Yu Mincho", serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(217,180,91,0.9)';
+  g.shadowBlur = 18;
+  g.fillStyle = 'rgba(240,235,220,0.95)';
+  g.fillText(ch, 64, 68);
+  const tex = new THREE.CanvasTexture(c);
+  wishTexCache.set(ch, tex);
+  return tex;
+}
+
+const wishes = [];
+function releaseWish(x, z) {
+  const ch = WISH_CHARS[Math.floor(Math.random() * WISH_CHARS.length)];
+  const mat = new THREE.SpriteMaterial({
+    map: wishTexture(ch), transparent: true, opacity: 0, depthWrite: false,
+  });
+  const s = new THREE.Sprite(mat);
+  s.scale.setScalar(1.4);
+  s.position.set(x, 0.6, z);
+  scene.add(s);
+  wishes.push({ s, mat, born: oceanUniforms.uTime.value, x, z });
+}
+
+/* ───────────────────────── 結び — 鳥居くぐり ─────────────────────────
+   物語を終えたあと鳥居をクリックすると、カメラが海面を滑って門をくぐる。
+   抜けた瞬間に光が満ち、あなたが灯した星の数を世界が告げる。 */
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const cineLook = new THREE.Vector3();
+let cinema = null;
+let finaleReady = false, finaleStarted = false, bloomed = false;
+
+function kanjiNum(n) {
+  const d = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  if (n < 10) return d[n];
+  if (n === 10) return '十';
+  if (n < 20) return '十' + d[n % 10];
+  return d[Math.floor(n / 10)] + '十' + d[n % 10];
+}
+
+function bloom() {
+  bloomed = true;
+  blessTarget = 1;
+  const bless = document.getElementById('bless');
+  bless.style.opacity = 1;
+  setTimeout(() => { bless.style.opacity = 0; }, 1200);
+  moonHalo.scale.setScalar(80);      // 月が満ちる
+  moonMesh.material.color.set(0xf6ecc4);
+  starMat.size = 0.8;                // 星がいっせいに強く瞬く
+  blessChord();
+  // 花びらが門のまわりで舞い上がる
+  const t = oceanUniforms.uTime.value;
+  petalGust = t + 9;
+  const p = petals.geometry.attributes.position;
+  for (let i = 0; i < 90; i++) {
+    p.setXYZ(i, (Math.random() - 0.5) * 24, Math.random() * 14 + 1.5, -14 + (Math.random() - 0.5) * 10);
+  }
+  p.needsUpdate = true;
+}
+
+function startFinale() {
+  if (finaleStarted) return;
+  finaleStarted = true;
+  controls.enabled = false;
+  // 月をやや左上に外して見つめる — 詞書が暗い空に乗るように
+  const gaze = v3(-16, 34, -95);
+  cinema = {
+    idx: 0, t: 0,
+    segs: [
+      { dur: 3.6, p0: camera.position.clone(), p1: v3(0, 3.4, 17),
+        l0: controls.target.clone(),           l1: v3(0, 5, -14) },
+      { dur: 5.2, p0: v3(0, 3.4, 17),  p1: v3(0, 2.8, -40),
+        l0: v3(0, 5, -14),             l1: v3(0, 5, -70),
+        onFrame() { if (!bloomed && camera.position.z < -13.5) bloom(); } },
+      { dur: 6.0, p0: v3(0, 2.8, -40), p1: v3(-9, 11, -58),
+        l0: v3(0, 5, -70),             l1: gaze },
+      { dur: 2.5, p0: v3(-9, 11, -58), p1: v3(-9, 11, -58),
+        l0: gaze,                      l1: gaze },
+      { dur: 4.2, p0: v3(-9, 11, -58), p1: v3(-17, 10, 6),
+        l0: gaze,                      l1: v3(0, 6, -14) },
+      { dur: 3.6, p0: v3(-17, 10, 6),  p1: v3(0, 9, 34),
+        l0: v3(0, 6, -14),             l1: v3(0, 3, 0) },
+    ],
+  };
+  finaleScript();
+}
+
+async function finaleScript() {
+  await showLine('それでは、まいりましょう', 600);
+  await sleep(3200); // ここで門をくぐる
+  await showLine('くぐった先も、おなじ海。けれど ――', 1400);
+  const n = wishStarCount;
+  await showLine(n > 0
+    ? `空にのぼった ${kanjiNum(Math.min(n, 64))} つの星は、あなたの願いです`
+    : 'この夜のしずけさは、もう あなたのものです', 2800);
+  await showLine('どうぞ、また 逢いにきてください', 2400);
+}
+
+/* ───────────────────────── オープニング飛行 ─────────────────────────
+   月のそばの高みから、静かに海面へ降りてくる。クリックで省略可。 */
+const INTRO_TIME = 9;
+let introT = 0;
+let introDone = false;
+const introFrom  = new THREE.Vector3(-26, 30, -4);
+const introTo    = new THREE.Vector3(0, 9, 34);
+const targetFrom = new THREE.Vector3(-20, 26, -60);
+const targetTo   = new THREE.Vector3(0, 3, 0);
+camera.position.copy(introFrom);
+
+/* ───────────────────────── 詞書 — 語りかける導入 ─────────────────────────
+   世界がひとこと語り、ユーザーの応答(波紋・線描)を待って物語が進む。 */
+const kotobaEl = document.getElementById('kotoba');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const happened = { ripple: false, wire: false };
+const waiters = {};
+function fire(name) {
+  happened[name] = true;
+  (waiters[name] || []).splice(0).forEach(f => f());
+}
+function awaitDeed(name, timeout = 30000) {
+  if (happened[name]) return Promise.resolve();
+  return new Promise(res => {
+    (waiters[name] ??= []).push(res);
+    setTimeout(res, timeout); // 応答がなくても物語は止めない
+  });
+}
+
+const GOLD_CHARS = '［］ＷＳＰＡＣＥ';
+function setLine(text, charDelay = 110) {
+  const line = document.createElement('div');
+  [...text].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch;
+    if (GOLD_CHARS.includes(ch)) s.classList.add('gold');
+    s.style.animationDelay = `${350 + i * charDelay}ms`;
+    line.appendChild(s);
+  });
+  kotobaEl.replaceChildren(line);
+  kotobaEl.classList.add('show');
+  return 350 + text.length * charDelay;
+}
+async function hideLine() {
+  kotobaEl.classList.remove('show');
+  await sleep(1300);
+}
+async function showLine(text, hold = 2400) {
+  await sleep(setLine(text) + hold);
+  await hideLine();
+}
+async function showLineUntil(text, deed) {
+  await sleep(setLine(text));
+  await awaitDeed(deed);
+  await sleep(900);
+  await hideLine();
+}
+
+async function story() {
+  await sleep(2600);                                   // 降下のあいだ、まず沈黙
+  await showLine('ここは、月だけが灯る海');
+  await showLineUntil('しずけさに、そっと ふれてみてください', 'ripple');
+  await sleep(800);
+  await showLine('―― 波紋ひとつ。それが、あなたの気配');
+  await showLine('ふれた願いは 文字になり、のぼって 星になります');
+  await showLine('この世界は、面と線とで できています');
+  await showLineUntil('［Ｗ］で、海の衣を 脱がせてみましょう', 'wire');
+  await sleep(800);
+  await showLine('これが、海の骨格');
+  startLanterns();
+  await showLine('…… 遠くの闇から、灯がひとつ、またひとつ', 3600);
+  await showLine('どうぞ、心のままに', 2800);
+  document.querySelector('.howto').classList.add('visible');
+  finaleReady = true;
+  // 長く佇む人には、そっと結びへ誘う
+  setTimeout(() => {
+    if (!finaleStarted) showLine('…… 鳥居が、あなたを 待っています', 2600);
+  }, 45000);
+}
+story();
+
+// 動作検証用の小窓(コンソールから灯籠・音の状態を確認できる)
+window.__tsukibae = {
+  startLanterns, lanterns, renderer, scene, camera, controls, oceanUniforms, waveHeightJS,
+  startFinale, bloom, releaseWish, wishes,
+  audioState: () => (audio ? audio.ctx.state : 'not-initialized'),
+  wishStars: () => wishStarCount,
+};
+
+/* ───────────────────────── 入力 ───────────────────────── */
+const raycaster = new THREE.Raycaster();
+const seaPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const modeNote = document.getElementById('modeNote');
+let noteTimer;
+function note(text) {
+  modeNote.textContent = text;
+  modeNote.classList.add('show');
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => modeNote.classList.remove('show'), 1600);
+}
+
+let downAt = null;
+addEventListener('pointerdown', e => {
+  downAt = [e.clientX, e.clientY];
+  if (!introDone) introT = INTRO_TIME; // クリックで降下を省略
+});
+addEventListener('pointerup', e => {
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+  downAt = null;
+  if (moved > 6) return; // ドラッグは視点操作
+  const ndc = new THREE.Vector2(
+    (e.clientX / innerWidth) * 2 - 1,
+    -(e.clientY / innerHeight) * 2 + 1
+  );
+  raycaster.setFromCamera(ndc, camera);
+  // 鳥居への参り — 結びの演出へ
+  if (finaleReady && !finaleStarted &&
+      raycaster.intersectObjects(torii.children, false).length > 0) {
+    initAudio();
+    startFinale();
+    return;
+  }
+  const hit = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(seaPlane, hit)) {
+    // ocean は XY 平面を X 軸で -90° 回転 → ワールド Z は plane の -Y
+    rippleData[rippleCursor].set(hit.x, -hit.z, oceanUniforms.uTime.value);
+    rippleCursor = (rippleCursor + 1) % MAX_RIPPLES;
+    fire('ripple');
+    initAudio(); // 最初の接触(ユーザー操作)で音の世界が開く
+    pluck();
+    if (wishes.length < 6) releaseWish(hit.x, hit.z);
+  }
+});
+
+let wireOnly = false;
+let paused = false;
+addEventListener('keydown', e => {
+  if (e.code === 'KeyW') {
+    wireOnly = !wireOnly;
+    oceanUniforms.uWireOnly.value = wireOnly ? 1 : 0;
+    ocean.visible = !wireOnly;
+    note(wireOnly ? '― 線描 ―' : '― 面描 ―');
+    fire('wire');
+  }
+  if (e.code === 'Space') {
+    e.preventDefault();
+    paused = !paused;
+    note(paused ? '― 静止 ―' : '― 流転 ―');
+  }
+  if (e.code === 'KeyM') {
+    const a = initAudio();
+    a.muted = !a.muted;
+    a.master.gain.linearRampToValueAtTime(a.muted ? 0 : 0.6, a.ctx.currentTime + 0.4);
+    note(a.muted ? '― 音、消ゆ ―' : '― 音、灯る ―');
+  }
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ───────────────────────── ループ ───────────────────────── */
+const clock = new THREE.Clock();
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = clock.getDelta();
+  if (!paused) {
+    const t = oceanUniforms.uTime.value += dt;
+
+    // 桜吹雪
+    const p = petals.geometry.attributes.position;
+    const seed = petals.userData.seed;
+    const gust = t < petalGust ? 3.2 : 1.0;
+    for (let i = 0; i < p.count; i++) {
+      let y = p.getY(i) - dt * (0.8 + Math.sin(seed[i]) * 0.3) * (gust > 1 ? 0.4 : 1);
+      let x = p.getX(i) + dt * gust * (0.6 + Math.sin(t * 0.7 + seed[i]) * 0.8);
+      if (y < 0.2) { y = 28 + Math.random() * 6; x = (Math.random() - 0.5) * 90; }
+      if (x > 48) x = -48;
+      p.setXYZ(i, x, y, p.getZ(i));
+    }
+    p.needsUpdate = true;
+
+    // 鳥居はごくわずかに揺らぐ(水鏡の上に立つ気配)
+    torii.position.y = 0.4 + Math.sin(t * 0.5) * 0.08;
+
+    // 灯籠 — 波に乗って闇から漂ってくる
+    if (lanterns.visible) {
+      for (const L of lanterns.children) {
+        const u = L.userData;
+        u.z += dt * u.speed;
+        u.x += dt * Math.sin(t * 0.25 + u.phase) * u.drift;
+        if (u.z > 42) {
+          u.z = -75 - Math.random() * 15;
+          u.x = (Math.random() - 0.5) * 46;
+        }
+        L.position.set(u.x, waveHeightJS(u.x, u.z, t) - 0.05, u.z);
+        L.rotation.y = u.phase + t * 0.06;
+        L.rotation.z = Math.sin(t * 0.7 + u.phase) * 0.05;
+        const fade = Math.min(Math.max((u.z + 80) / 35, 0), 1); // 遠くは闇に溶ける
+        u.bodyMat.opacity = 0.75 * fade;
+        u.glowMat.opacity = fade * (0.8 + 0.2 * Math.sin(t * 3 + u.phase * 7)); // 灯のゆらぎ
+        u.glow.scale.setScalar(4.2 + 0.4 * Math.sin(t * 2.3 + u.phase * 5));
+      }
+    }
+
+    // 願い文字 — 波紋からのぼり、空に届いて星になる
+    for (let i = wishes.length - 1; i >= 0; i--) {
+      const w = wishes[i];
+      const age = t - w.born;
+      const rise = 1 - Math.pow(1 - Math.min(age / 6, 1), 2); // だんだんゆっくり昇る
+      w.s.position.set(w.x + Math.sin(age * 1.3) * 0.3, 0.6 + rise * 7.5, w.z);
+      w.s.scale.setScalar(1.4 + rise * 0.8);
+      w.mat.opacity = Math.min(age / 0.6, 1) * (1 - Math.min(Math.max((age - 4.5) / 1.5, 0), 1));
+      if (age >= 6) {
+        scene.remove(w.s);
+        w.mat.dispose();
+        wishes.splice(i, 1);
+        igniteStar(w.x); // 空に星として残る
+        bell();
+      }
+    }
+  }
+  // 祝福はゆっくり世界に滲む
+  oceanUniforms.uBless.value += (blessTarget - oceanUniforms.uBless.value) * Math.min(dt * 0.7, 1);
+
+  if (cinema) {
+    // 結びのカメラ — 海面を滑り、鳥居をくぐる
+    cinema.t += dt;
+    const seg = cinema.segs[cinema.idx];
+    const u = Math.min(cinema.t / seg.dur, 1);
+    const k = u * u * u * (u * (u * 6 - 15) + 10);
+    camera.position.lerpVectors(seg.p0, seg.p1, k);
+    cineLook.lerpVectors(seg.l0, seg.l1, k);
+    camera.lookAt(cineLook);
+    if (seg.onFrame) seg.onFrame();
+    if (u >= 1) {
+      cinema.idx++;
+      cinema.t = 0;
+      if (cinema.idx >= cinema.segs.length) {
+        cinema = null;
+        controls.target.set(0, 3, 0);
+        controls.enabled = true;
+      }
+    }
+  } else if (!introDone) {
+    // 月のそばから海面への降下(smootherstep)
+    introT = Math.min(introT + dt, INTRO_TIME);
+    const u = introT / INTRO_TIME;
+    const k = u * u * u * (u * (u * 6 - 15) + 10);
+    camera.position.lerpVectors(introFrom, introTo, k);
+    controls.target.lerpVectors(targetFrom, targetTo, k);
+    camera.lookAt(controls.target);
+    if (introT >= INTRO_TIME) {
+      introDone = true;
+      controls.enabled = true;
+    }
+  } else {
+    controls.update();
+  }
+  renderer.render(scene, camera);
+}
+tick();
+</script>
+</body>
+</html>
