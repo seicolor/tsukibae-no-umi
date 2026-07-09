@@ -535,28 +535,53 @@ function pluck(freqArg) {
   for (const o of [o1, o2, o3]) { o.start(t0); o.stop(t0 + 3.4); }
 }
 
-// 鈴(りん) — 願いが星に届いた合図
+// おりん — 願いが星に届いた合図。うなりを含んだ長い余韻が夜に溶けていく
 function bell() {
   if (!audio || audio.muted) return;
   const { ctx, master, convolver } = audio;
   const t0 = ctx.currentTime;
-  const f = 1318.5 * (0.98 + Math.random() * 0.04);
+  const f = 784 * (0.985 + Math.random() * 0.03); // G5 あたり。高すぎない、落ち着いた鳴り
+
+  // 全体の包絡 — 柔らかく立ち上がり、約6秒かけて消える
   const g = ctx.createGain();
   g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.045, t0 + 0.005);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.9);
+  g.gain.linearRampToValueAtTime(0.05, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 6.0);
   g.connect(master);
-  g.connect(convolver);
-  const o1 = ctx.createOscillator();
-  o1.frequency.value = f;
-  o1.connect(g);
-  const g2 = ctx.createGain();
-  g2.gain.value = 0.3;
-  g2.connect(g);
+  // 残響へは深めに送る — 余韻が夜の海に広がる
+  const wet = ctx.createGain();
+  wet.gain.value = 1.6;
+  g.connect(wet);
+  wet.connect(convolver);
+
+  // 基音を2本、わずかにずらして「うなり」の揺らぎを作る(本物のおりんの息づかい)
+  const oA = ctx.createOscillator();
+  oA.frequency.value = f - 0.7;
+  oA.connect(g);
+  const oB = ctx.createOscillator();
+  oB.frequency.value = f + 0.7;
+  const gB = ctx.createGain();
+  gB.gain.value = 0.8;
+  oB.connect(gB);
+  gB.connect(g);
+
+  // 非整数倍音 — 打った瞬間の金属のきらめき。基音より先に減衰する
   const o2 = ctx.createOscillator();
-  o2.frequency.value = f * 2.76; // 鐘特有の非整数倍音
+  o2.frequency.value = f * 2.67;
+  const g2 = ctx.createGain();
+  g2.gain.setValueAtTime(0.35, t0);
+  g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.2);
   o2.connect(g2);
-  for (const o of [o1, o2]) { o.start(t0); o.stop(t0 + 2); }
+  g2.connect(g);
+  const o3 = ctx.createOscillator();
+  o3.frequency.value = f * 5.4;
+  const g3 = ctx.createGain();
+  g3.gain.setValueAtTime(0.12, t0);
+  g3.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
+  o3.connect(g3);
+  g3.connect(g);
+
+  for (const o of [oA, oB, o2, o3]) { o.start(t0); o.stop(t0 + 6.2); }
 }
 
 // くぐりの和音 — 低い持続音が満ちて、琴のアルペジオが立ちのぼる
